@@ -37,26 +37,40 @@ def download_and_extract_zip():
 # 📥 다운로드 + 압축해제 먼저 실행
 download_and_extract_zip()
 
-# ✅ 모델 로드
+# ✅ 학파 라벨
 school_labels = [
     '르네상스', '바로크', '로코코', '신고전주의', '낭만주의',
     '자연주의', '사실주의', '인상주의', '입체파&추상화'
 ]
 
-school_model = load_model("models/art_classification_model.keras")
-
-binary_models = {}
-for school in school_labels:
-    path = f"models/{school}_이진분류.keras"
-    if os.path.exists(path):
-        binary_models[school] = load_model(path)
-
 # ✅ FastAPI 앱 생성
 app = FastAPI()
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_FOLDER), name="uploads")
+
+# ✅ 분석 요청 예시 라우트
+@app.post("/upload")
+async def analyze_image(file: UploadFile = File(...)):
+    # 1. 이미지 저장
+    contents = await file.read()
+    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    # 2. 🧠 모델 지연 로딩
+    school_model = load_model("models/art_classification_model.keras")
+
+    binary_models = {}
+    for school in school_labels:
+        path = f"models/{school}_이진분류.keras"
+        if os.path.exists(path):
+            binary_models[school] = load_model(path)
+
+    # 3. 분석 처리 (예: 모델 예측)
+    # predicted = school_model.predict(...) 등
+
+    return {"result": "예측 결과 반환"}
 
 # 🔐 Gemini API 설정
 genai.configure(api_key="AIzaSyAGNPBS6pzxMbPUbHlSdfhX5rrthgDy9ko")
